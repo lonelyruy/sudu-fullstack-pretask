@@ -129,111 +129,107 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue';
+import { getNotes, createNote, updateNote, deleteNote as apiDeleteNote } from '../api';
 
-//State
-const searchQuery = ref('')
-const isModalOpen = ref(false)
-const editingNoteId = ref(null)
+// State
+const notes = ref([]);
+const searchQuery = ref('');
+const isModalOpen = ref(false);
+const editingNoteId = ref(null);
 
 const form = ref({
   title: '',
-  content:''
-})
+  content: ''
+});
 
-//Default starter notes
-const defualtNotes = [
-  {
-    id: 1,
-    title: 'Welcome Note',
-    content: 'First Note',
-    updatedAt: new Date().toLocaleDateString()
+// 1. Fetch notes from database
+const fetchNotes = async () => {
+  try {
+    const response = await getNotes();
+    notes.value = response.data;
+  } catch (error) {
+    console.error('Failed to fetch notes:', error);
   }
-]
+};
 
-// LocalStorage Persistence(Connect database)
-const notes = ref(JSON.parse(localStorage.getItem('vue_notes')) || defualtNotes)
-
-watch(notes, (newNotes) => {
-  localStorage.setItem('vue_notes', JSON.stringify(newNotes))
-}, {deep: true})
-
-//Search Filter Logic
+// 2. Filter notes for Search Input
 const filteredNotes = computed(() => {
-  const query = searchQuery.value.toLowerCase().trim()
-  if(!query) return notes.value
+  if (!searchQuery.value.trim()) return notes.value;
+  const q = searchQuery.value.toLowerCase();
+  return notes.value.filter(
+    (n) => n.title?.toLowerCase().includes(q) || n.content?.toLowerCase().includes(q)
+  );
+});
 
-  return notes.value.filter(note =>
-    note.title.toLowerCase().includes(query) ||
-    note.content.toLowerCase().includes(query)
-  )
-})
-
-// Modal Handlers
+// 3. Modal Handlers
 const openCreateModal = () => {
-  editingNoteId.value = null
-  form.value = {title: '', content: ''}
-  isModalOpen.value = true
-}
+  editingNoteId.value = null;
+  form.value = { title: '', content: '' };
+  isModalOpen.value = true;
+};
 
-const openEditModal = (note) =>{
-  editingNoteId.value = note.id
-  form.value = { title: note.title, content: note.content }
-  isModalOpen.value = true
-}
+const openEditModal = (note) => {
+  editingNoteId.value = note.id;
+  form.value = { title: note.title, content: note.content };
+  isModalOpen.value = true;
+};
 
 const closeModal = () => {
-  isModalOpen.value = false
-}
+  isModalOpen.value = false;
+  editingNoteId.value = null;
+  form.value = { title: '', content: '' };
+};
 
-// Create
-const saveNote = () => {
-  const formattedDate = new Date().toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  })
+// 4. Save / Update Note (Connects to MySQL)
+const saveNote = async () => {
+  console.log("Saving note to database...", form.value);
 
-  if(editingNoteId.value){
-    const index = notes.value.findIndex(n => n.id === editingNoteId.value)
-    if(index !== -1) {
-      notes.value[index] = {
-        ...notes.value[index],
-        title: form.value.title,
-        content: form.value.content,
-        updatedAt: formattedDate
-      }
+  const payload = {
+    title: form.value.title,
+    content: form.value.content,
+    updatedAt: new Date().toLocaleString()
+  };
+
+  try {
+    if (editingNoteId.value) {
+      // Update existing note
+      await updateNote(editingNoteId.value, payload);
+    } else {
+      // Create new note
+      await createNote(payload);
     }
-  } else {
-    notes.value.unshift({
-     id: Date.now(),
-     title: form.value.title,
-     content: form.value.content,
-     updatedAt: formattedDate
-    })
+    
+    closeModal();
+    await fetchNotes(); // Refresh list from MySQL
+  } catch (error) {
+    console.error('Failed to save note:', error);
   }
+};
 
-  closeModal()
-}
-
-//Delete Note
-const deleteNote = (id) => {
-  if (confirm('Are your sure you want to delete this note?')) {
-    notes.value = notes.value.filter(note => note.id !== id)
+// 5. Delete Note from MySQL
+const deleteNote = async (id) => {
+  if (!confirm("Are you sure you want to delete this note?")) return;
+  try {
+    await apiDeleteNote(id);
+    await fetchNotes();
+  } catch (error) {
+    console.error('Failed to delete note:', error);
   }
-}
+};
 
-//Download as .txt
+// 6. Download TXT File helper
 const downloadTxt = (note) => {
-  const blob = new Blob([`${note.title}\n\n${note.content}`], { type: 'text/plain;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `${note.title.toLowerCase().replace(/[^a-z0-9]/g, '_')}.txt`
-  link.click()
-  URL.revokeObjectURL(url)
-}
+  const element = document.createElement("a");
+  const file = new Blob([`Title: ${note.title}\n\n${note.content}`], { type: 'text/plain' });
+  element.href = URL.createObjectURL(file);
+  element.download = `${note.title || 'note'}.txt`;
+  document.body.appendChild(element);
+  element.click();
+  document.body.removeChild(element);
+};
 
-
-
+onMounted(() => {
+  fetchNotes();
+});
 </script>
