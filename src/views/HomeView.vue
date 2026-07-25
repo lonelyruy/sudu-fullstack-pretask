@@ -127,3 +127,113 @@
     </div>
   </div>
 </template>
+
+<script setup>
+import { ref, computed, onMounted, watch } from 'vue'
+
+//State
+const searchQuery = ref('')
+const isModalOpen = ref(false)
+const editingNoteId = ref(null)
+
+const form = ref({
+  title: '',
+  content:''
+})
+
+//Default starter notes
+const defualtNotes = [
+  {
+    id: 1,
+    title: 'Welcome Note',
+    content: 'First Note',
+    updatedAt: new Date().toLocaleDateString()
+  }
+]
+
+// LocalStorage Persistence(Connect database)
+const notes = ref(JSON.parse(localStorage.getItem('vue_notes')) || defualtNotes)
+
+watch(notes, (newNotes) => {
+  localStorage.setItem('vue_notes', JSON.stringify(newNotes))
+}, {deep: true})
+
+//Search Filter Logic
+const filteredNotes = computed(() => {
+  const query = searchQuery.value.toLowerCase().trim()
+  if(!query) return notes.value
+
+  return notes.value.filter(note =>
+    note.title.toLowerCase().includes(query) ||
+    note.content.toLowerCase().includes(query)
+  )
+})
+
+// Modal Handlers
+const openCreateModal = () => {
+  editingNoteId.value = null
+  form.value = {title: '', content: ''}
+  isModalOpen.value = true
+}
+
+const openEditModal = (note) =>{
+  editingNoteId.value = note.id
+  form.value = { title: note.title, content: note.content }
+  isModalOpen.value = true
+}
+
+const closeModal = () => {
+  isModalOpen.value = false
+}
+
+// Create
+const saveNote = () => {
+  const formattedDate = new Date().toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  })
+
+  if(editingNoteId.value){
+    const index = notes.value.findIndex(n => n.id === editingNoteId.value)
+    if(index !== -1) {
+      notes.value[index] = {
+        ...notes.value[index],
+        title: form.value.title,
+        content: form.value.content,
+        updatedAt: formattedDate
+      }
+    }
+  } else {
+    notes.value.unshift({
+     id: Date.now(),
+     title: form.value.title,
+     content: form.value.content,
+     updatedAt: formattedDate
+    })
+  }
+
+  closeModal()
+}
+
+//Delete Note
+const deleteNote = (id) => {
+  if (confirm('Are your sure you want to delete this note?')) {
+    notes.value = notes.value.filter(note => note.id !== id)
+  }
+}
+
+//Download as .txt
+const downloadTxt = (note) => {
+  const blob = new Blob([`${note.title}\n\n${note.content}`], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${note.title.toLowerCase().replace(/[^a-z0-9]/g, '_')}.txt`
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+
+
+</script>
