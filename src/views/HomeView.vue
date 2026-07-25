@@ -16,7 +16,17 @@
           <span> + </span> New Note
         </button>
       </header>
+
+    <!-- Search Input -->
+    <div class = "relative">
+      <input 
+        v-model = "searchQuery"
+        type = "text"
+        placeholder = "Search notes by title or content..."
+        class = "w-full px-4 py-3 bg-white border border-slate-200 rounded-xl shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-slate-700 placeholder-slate-400"
+      />
     </div>
   </div>
+</div>
 
 </template>
