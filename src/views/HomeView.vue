@@ -17,16 +17,113 @@
         </button>
       </header>
 
-    <!-- Search Input -->
-    <div class = "relative">
-      <input 
-        v-model = "searchQuery"
-        type = "text"
-        placeholder = "Search notes by title or content..."
-        class = "w-full px-4 py-3 bg-white border border-slate-200 rounded-xl shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-slate-700 placeholder-slate-400"
-      />
+      <!-- Search Input -->
+      <div class = "relative">
+        <input 
+          v-model = "searchQuery"
+          type = "text"
+          placeholder = "Search notes by title or content..."
+          class = "w-full px-4 py-3 bg-white border border-slate-200 rounded-xl shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-slate-700 placeholder-slate-400"
+        />
+      </div>
+
+      <!-- Show Note -->
+      <div v-if = "filteredNotes.length > 0" class = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+
+        <!-- Note Card -->
+        <div
+          v-for = "note in filteredNotes"
+          :key = "note.id"
+          class = "bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
+        >
+
+          <div>
+            <h3 class = "font-bold text-lg text-slate-800 mb-2 line-clamp-1">{{ note.title }}</h3>
+            <p class="text-slate-600 text-sm line-clamp-4 whitespace-pre-line leading-relaxed">{{ note.content }}</p>
+          </div>
+
+          <!-- Card Actions -->
+          <div class="flex items-center justify-between pt-4 mt-4 border-t border-slate-100 text-xs text-slate-400">
+            <span> Last Update at {{note.updatedAt}} </span>
+            <div class="flex items-center gap-1">
+              <button @click="openEditModal(note)"> Edit </button>
+              <button @click="downloadTxt(note)"> Download </button>
+              <button @click="deleteNote(note.id)"> Delete </button>
+            </div> 
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div v-else class="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300">
+        <div class="text-4xl mb-3">📝</div>
+        <h3 class="text-lg font-bold text-slate-700">No notes found</h3>
+        <p v-if="searchQuery" class="text-slate-500 text-sm mt-1">Try searching for a different keyword.</p>
+        <p v-else class="text-slate-500 text-sm mt-1">Click <strong>"+ New Note"</strong> above to create your first note!</p>
+      </div>
+    </div>
+
+    <!-- Modal Popup -->
+    <div  
+      v-if = "isModalOpen"
+      class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50"
+      @click.self = "closeModal"
+    >
+
+      <!-- For choosing editing or create-->
+      <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-5">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <h2 class="text-xl font-bold text-slate-800">
+            {{ editingNoteId ? 'Edit Note' : '+ Create New Note'}}
+          </h2>
+          <button @click = "closeModal" class="text-slate-400 hover:text-slate-600 cursor-pointer">✕</button>
+        </div>
+
+        <!-- File Title -->
+        <form @submit.prevent = "saveNote" class = "space-y-4">
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1">Title</label>
+            <input 
+              v-model = "form.title"
+              type = "text"
+              placeholder = "e.g. To Do list"
+              required
+              class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-emerald-500 focus:bg-white transition-all text-sm"
+            />
+          </div>
+
+          <!-- File Content -->
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1">Content</label>
+            <textarea
+              v-model = "form.content"
+              rows = "5"
+              placeholder = "Write your detaild here..."
+              required
+              class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-emerald-500 focus:bg-white transition-all text-sm"          
+            ></textarea>
+          </div>
+
+          <!-- Close Button & Submit Button-->
+          <div class = "flex justify-end gap-2 pt-2">
+            <button
+              type = "button"
+              @click = "closeModal"
+              class="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+
+            <button 
+              type = "submit"
+              class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-lg shadow-xs transition-colors cursor-pointer"
+            >
+              {{ editingNoteId ? 'Update' : 'Save Note' }}
+
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
-</div>
-
 </template>
